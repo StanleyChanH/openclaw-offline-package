@@ -1,0 +1,45 @@
+# Windows
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OpenClaw runtime
+.openclaw/
+.openclaw.json
+
+# Temp files
+*.tmp
+*.temp
+~*
+
+# Large directories (distributed via Releases)
+node_modules/
+nodejs/
+git/
+
+# Package files (distributed via Releases)
+*.zip
+*.7z
+*.7z.exe
+
+# Package lock
+package-lock.json
+
+# Old docs
+*.md
+!README.md
