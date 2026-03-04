@@ -57,6 +57,24 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Download Node.js Windows binaries
+        run: |
+          # 获取 Node.js 22.x 最新版本
+          $versions = Invoke-RestMethod -Uri "https://nodejs.org/dist/index.json"
+          $latest22 = $versions | Where-Object { $_.version -match "^v22\." } | Select-Object -First 1
+          $nodeVersion = $latest22.version
+          Write-Host "Downloading Node.js $nodeVersion for Windows..."
+
+          # 下载 Node.js Windows ZIP
+          $url = "https://nodejs.org/dist/$nodeVersion/node-$nodeVersion-win-x64.zip"
+          Invoke-WebRequest -Uri $url -OutFile "nodejs.zip"
+
+          # 解压并重命名
+          Expand-Archive -Path "nodejs.zip" -DestinationPath "." -Force
+          Move-Item -Path "node-$nodeVersion-win-x64" -Destination "nodejs" -Force
+
+          Write-Host "Node.js $nodeVersion downloaded"
+
       - name: Install OpenClaw
         env:
           VERSION: ${{ needs.check-version.outputs.new_version }}
@@ -68,11 +86,6 @@ jobs:
 
           Write-Host "Installing OpenClaw version: $env:VERSION"
 
-          # 清理旧的 node_modules
-          if (Test-Path "node_modules") {
-            Remove-Item -Path "node_modules" -Recurse -Force
-          }
-
           # 安装依赖
           npm install --legacy-peer-deps
 
@@ -82,34 +95,42 @@ jobs:
         env:
           VERSION: ${{ needs.check-version.outputs.new_version }}
         run: |
+          # 获取工作目录
+          $workDir = $PWD.Path
+          $tempDir = Join-Path $workDir "openclaw-offline-package"
+
+          Write-Host "Working directory: $workDir"
+          Write-Host "Temp directory: $tempDir"
+
           # 创建临时目录
-          $tempDir = "openclaw-offline-package"
           New-Item -ItemType Directory -Path $tempDir -Force
 
-          # 复制必要文件（使用仓库中的 nodejs 目录）
-          Copy-Item -Path "nodejs" -Destination "$tempDir/nodejs" -Recurse -Force
-          Copy-Item -Path "node_modules" -Destination "$tempDir/node_modules" -Recurse -Force
-          Copy-Item -Path "package.json" -Destination "$tempDir/" -Force
-          Copy-Item -Path "package-lock.json" -Destination "$tempDir/" -Force
-          Copy-Item -Path "*.bat" -Destination "$tempDir/" -Force
-          Copy-Item -Path "README.md" -Destination "$tempDir/" -Force
-          Copy-Item -Path ".gitignore" -Destination "$tempDir/" -Force
+          # 复制必要文件（使用绝对路径）
+          Copy-Item -Path "$workDir\nodejs" -Destination "$tempDir\nodejs" -Recurse -Force
+          Copy-Item -Path "$workDir\node_modules" -Destination "$tempDir\node_modules" -Recurse -Force
+          Copy-Item -Path "$workDir\package.json" -Destination "$tempDir\" -Force
+          Copy-Item -Path "$workDir\package-lock.json" -Destination "$tempDir\" -Force
+          Copy-Item -Path "$workDir\*.bat" -Destination "$tempDir\" -Force
+          Copy-Item -Path "$workDir\README.md" -Destination "$tempDir\" -Force
+          Copy-Item -Path "$workDir\.gitignore" -Destination "$tempDir\" -Force
 
           # 创建 ZIP 压缩包
-          Compress-Archive -Path $tempDir -DestinationPath "openclaw-offline-package-v$env:VERSION.zip" -Force
+          $zipPath = Join-Path $workDir "openclaw-offline-package-v$env:VERSION.zip"
+          Compress-Archive -Path $tempDir -DestinationPath $zipPath -Force
 
           Write-Host "Package created: openclaw-offline-package-v$env:VERSION.zip"
 
           # 获取文件大小
-          $fileSize = (Get-Item "openclaw-offline-package-v$env:VERSION.zip").Length / 1MB
+          $fileSize = (Get-Item $zipPath).Length / 1MB
           Write-Host "Package size: $([math]::Round($fileSize, 2)) MB"
 
       - name: Generate checksum
         env:
           VERSION: ${{ needs.check-version.outputs.new_version }}
         run: |
-          $hash = Get-FileHash -Path "openclaw-offline-package-v$env:VERSION.zip" -Algorithm SHA256
-          $hash.Hash | Out-File -FilePath "openclaw-offline-package-v$env:VERSION.zip.sha256" -NoNewline
+          $zipFile = "openclaw-offline-package-v$env:VERSION.zip"
+          $hash = Get-FileHash -Path $zipFile -Algorithm SHA256
+          $hash.Hash | Out-File -FilePath "$zipFile.sha256" -NoNewline
           Write-Host "SHA256: $($hash.Hash)"
 
       - name: Create Release
