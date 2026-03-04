@@ -52,21 +52,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set version
-        run: |
-          echo "VERSION=${{ needs.check-version.outputs.new_version }}" >> $GITHUB_ENV
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
       - name: Install OpenClaw
+        env:
+          VERSION: ${{ needs.check-version.outputs.new_version }}
         run: |
           # 更新 package.json 中的版本
           $packageJson = Get-Content -Path "package.json" -Raw | ConvertFrom-Json
-          $packageJson.dependencies.openclaw = "^${{ env.VERSION }}"
+          $packageJson.dependencies.openclaw = "^$env:VERSION"
           $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path "package.json"
+
+          Write-Host "Installing OpenClaw version: $env:VERSION"
 
           # 清理旧的 node_modules
           if (Test-Path "node_modules") {
@@ -76,9 +76,11 @@ jobs:
           # 安装依赖
           npm install --legacy-peer-deps
 
-          Write-Host "OpenClaw ${{ env.VERSION }} installed"
+          Write-Host "OpenClaw $env:VERSION installed"
 
       - name: Create offline package
+        env:
+          VERSION: ${{ needs.check-version.outputs.new_version }}
         run: |
           # 创建临时目录
           $tempDir = "openclaw-offline-package"
@@ -94,36 +96,40 @@ jobs:
           Copy-Item -Path ".gitignore" -Destination "$tempDir/" -Force
 
           # 创建 ZIP 压缩包
-          Compress-Archive -Path $tempDir -DestinationPath "openclaw-offline-package-v${{ env.VERSION }}.zip" -Force
+          Compress-Archive -Path $tempDir -DestinationPath "openclaw-offline-package-v$env:VERSION.zip" -Force
 
-          Write-Host "Package created: openclaw-offline-package-v${{ env.VERSION }}.zip"
+          Write-Host "Package created: openclaw-offline-package-v$env:VERSION.zip"
 
           # 获取文件大小
-          $fileSize = (Get-Item "openclaw-offline-package-v${{ env.VERSION }}.zip").Length / 1MB
+          $fileSize = (Get-Item "openclaw-offline-package-v$env:VERSION.zip").Length / 1MB
           Write-Host "Package size: $([math]::Round($fileSize, 2)) MB"
 
       - name: Generate checksum
+        env:
+          VERSION: ${{ needs.check-version.outputs.new_version }}
         run: |
-          $hash = Get-FileHash -Path "openclaw-offline-package-v${{ env.VERSION }}.zip" -Algorithm SHA256
-          $hash.Hash | Out-File -FilePath "openclaw-offline-package-v${{ env.VERSION }}.zip.sha256" -NoNewline
+          $hash = Get-FileHash -Path "openclaw-offline-package-v$env:VERSION.zip" -Algorithm SHA256
+          $hash.Hash | Out-File -FilePath "openclaw-offline-package-v$env:VERSION.zip.sha256" -NoNewline
           Write-Host "SHA256: $($hash.Hash)"
 
       - name: Create Release
+        env:
+          VERSION: ${{ needs.check-version.outputs.new_version }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.VERSION }}
-          name: OpenClaw v${{ env.VERSION }} Offline Package
+          tag_name: v${{ needs.check-version.outputs.new_version }}
+          name: OpenClaw v${{ needs.check-version.outputs.new_version }} Offline Package
           body: |
-            ## OpenClaw v${{ env.VERSION }} Windows 离线安装包
+            ## OpenClaw v${{ needs.check-version.outputs.new_version }} Windows 离线安装包
 
             ### 包含内容
             - Node.js 运行时 (Windows x64)
-            - OpenClaw v${{ env.VERSION }} 及所有依赖
+            - OpenClaw v${{ needs.check-version.outputs.new_version }} 及所有依赖
 
             ### 使用方法
-            1. 下载 `openclaw-offline-package-v${{ env.VERSION }}.zip`
+            1. 下载 `openclaw-offline-package-v${{ needs.check-version.outputs.new_version }}.zip`
             2. 解压到任意目录
-            3. 双击运行 `start.bat`
+            3. 双击 `01_首次配置.bat` 开始配置
 
             ### 系统要求
             - Windows 10/11 (64-bit)
@@ -131,18 +137,20 @@ jobs:
 
             ---
 
-            上游仓库: https://github.com/openclaw/openclaw/releases/tag/v${{ env.VERSION }}
+            上游仓库: https://github.com/openclaw/openclaw/releases/tag/v${{ needs.check-version.outputs.new_version }}
           files: |
-            openclaw-offline-package-v${{ env.VERSION }}.zip
-            openclaw-offline-package-v${{ env.VERSION }}.zip.sha256
+            openclaw-offline-package-v${{ needs.check-version.outputs.new_version }}.zip
+            openclaw-offline-package-v${{ needs.check-version.outputs.new_version }}.zip.sha256
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build completed
+        env:
+          VERSION: ${{ needs.check-version.outputs.new_version }}
         run: |
-          Write-Host "Release v${{ env.VERSION }} created successfully!"
+          Write-Host "Release v$env:VERSION created successfully!"
 
   # 清理旧的 release，只保留最近 5 个
   cleanup:
