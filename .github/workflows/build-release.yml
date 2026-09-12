@@ -55,14 +55,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Download Node.js Windows binaries
         run: |
-          # 获取 Node.js 22.x 最新版本
+          # 获取 Node.js 24.x 最新版本
           $versions = Invoke-RestMethod -Uri "https://nodejs.org/dist/index.json"
-          $latest22 = $versions | Where-Object { $_.version -match "^v22\." } | Select-Object -First 1
-          $nodeVersion = $latest22.version
+          $latest24 = $versions | Where-Object { $_.version -match "^v24\." } | Select-Object -First 1
+          $nodeVersion = $latest24.version
           Write-Host "Downloading Node.js $nodeVersion for Windows..."
 
           # 下载 Node.js Windows ZIP
