@@ -214,7 +214,8 @@ start.bat doctor
 
 ## 📄 许可证
 
-OpenClaw 采用 [MIT 许可证](https://github.com/openclaw/openclaw/blob/main/LICENSE)。
+- **本仓库**（离线安装包脚本、批处理文件与使用文档）采用 [MIT 许可证](LICENSE)，可自由用于个人或商业场景，保留版权声明即可。
+- **OpenClaw 本体**同样采用 [MIT 许可证](https://github.com/openclaw/openclaw/blob/main/LICENSE)，版权归 OpenClaw 项目作者所有。
 
 ---
 
